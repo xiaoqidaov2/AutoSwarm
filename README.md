@@ -1,5 +1,7 @@
 # AutoSwarm: Step-Driven Autonomous Multi-Agent System
 
+**版本**: 0.0.1
+
 ## 📋 项目概述
 
 AutoSwarm 是一个完全**时间步长驱动**的无主多智能体系统，所有 Agent 平等独立，按照全局统一时钟同步执行。
@@ -46,15 +48,25 @@ AutoSwarm 是一个完全**时间步长驱动**的无主多智能体系统，所
 - 终端执行：`execute_command`
 - 文件操作：`write_file`
 
-## 🚀 快速开始
+## 📦 安装
 
-### 1. 安装依赖
+### 方式一：开发安装（推荐）
+
+```bash
+git clone <repository>
+cd autoswarm
+pip install -e .
+```
+
+### 方式二：直接使用
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. 配置 API Key
+## 🚀 快速开始
+
+### 1. 配置 API Key
 
 复制并编辑 `.env` 文件：
 
@@ -63,19 +75,49 @@ cp .env.example .env
 # 编辑 .env 填入你的 API Key
 ```
 
-### 3. 运行系统
+支持的环境变量：
+- `DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY`：API密钥
+- `LLM_MODEL`：模型名称（默认：deepseek-chat）
+- `LLM_BASE_URL`：API地址（默认：https://api.deepseek.com）
+- `LOG_LEVEL`：日志级别（DEBUG/INFO/WARNING/ERROR，默认：INFO）
+- `LOG_FILE`：日志文件路径（默认：logs/autoswarm.log）
+- `AGENT_MAX_TOKEN_LIMIT`：Agent最大token限制（默认：32000）
+- `AGENT_TEMPERATURE`：LLM温度参数（默认：0.7）
+
+### 2. 运行系统
+
+#### 使用 CLI 命令
 
 ```bash
+# 使用默认参数
+autoswarm
+
+# 自定义参数
+autoswarm --agents 5 --max-steps 20 --model deepseek-chat
+```
+
+#### 直接运行
+
+```bash
+# 使用 src 目录
+python -m autoswarm.cli --agents 3 --max-steps 10
+
+# 或使用兼容脚本
 python main.py --agents 5 --max-steps 20
 ```
 
 参数说明：
-- `--agents`：初始 Agent 数量
-- `--max-steps`：最大步数
+- `--agents`：初始Agent数量（默认：3）
+- `--max-steps`：最大步数（默认：10）
+- `--roles`：角色种子文件路径（默认：roles.json）
+- `--tasks`：任务种子文件路径（默认：tasks.json）
+- `--model`：模型名称（默认：deepseek-chat）
+- `--log-level`：日志级别（DEBUG/INFO/WARNING/ERROR，默认：INFO）
+- `--log-file`：日志文件路径（默认：logs/autoswarm.log）
 
-### 4. 自定义角色和任务
+### 3. 自定义角色和任务
 
-编辑 `roles.json` 和 `tasks.json` 设置初始配置。
+编辑 `examples/roles.json` 和 `examples/tasks.json` 设置初始配置，或在项目根目录创建你自己的配置文件。
 
 ## 📊 运行流程
 
@@ -146,21 +188,36 @@ python main.py --agents 5 --max-steps 20
 
 ```
 autoswarm/
-├── __init__.py
-├── main.py                 # CLI 主入口
-├── agent.py                # Agent 个体执行器
-├── coordinator.py          # 全局步进协调器
-├── models.py               # 核心数据模型
-├── pools.py                # 动态三池服务
-├── tools.py                # 内置工具定义
-├── message_bus.py          # Agent 通信总线
-├── requirements.txt        # Python 依赖
-├── roles.json             # 初始角色配置
-├── tasks.json             # 初始任务配置
-├── .env.example           # API Key 配置示例
+├── src/
+│   └── autoswarm/
+│       ├── __init__.py          # 包初始化
+│       ├── __version__.py       # 版本信息
+│       ├── config.py             # 配置管理
+│       ├── logger.py             # 日志系统
+│       ├── cli.py                # CLI 主入口
+│       └── core/
+│           ├── __init__.py
+│           ├── models.py          # 核心数据模型
+│           ├── pools.py           # 动态三池服务
+│           ├── message_bus.py     # Agent 通信总线
+│           ├── tools.py         # 内置工具定义
+│           ├── agent.py        # Agent 个体执行器
+│           └── coordinator.py  # 全局步进协调器
+├── examples/
+│   ├── roles.json             # 示例角色配置
+│   ├── tasks.json             # 示例任务配置
+│   └── .env.example        # 示例配置文件
+├── tests/                      # 测试目录
+├── logs/                       # 日志目录
+├── main.py                    # 兼容启动脚本
+├── setup.py                   # 包安装配置
+├── requirements.txt           # Python 依赖
+├── roles.json              # 默认角色配置
+├── tasks.json              # 默认任务配置
+├── .env.example             # API Key 配置示例
 ├── .gitignore
 ├── README.md
-└── QUICKSTART.md          # 快速开始指南
+└── QUICKSTART.md           # 快速开始指南
 ```
 
 ## 💡 研究价值

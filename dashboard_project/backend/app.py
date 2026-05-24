@@ -1,0 +1,1 @@
+from flask import Flask, jsonify\nfrom flask_cors import CORS\n\napp = Flask(__name__)\nCORS(app)\n\n@app.route('/api/health')\ndef health():\n    return jsonify({'status': 'ok', 'message': '数据面板后端服务运行中'})\n\nif __name__ == '__main__':\n    app.run(debug=True, host='0.0.0.0', port=5000)\n

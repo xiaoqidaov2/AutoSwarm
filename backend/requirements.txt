@@ -1,1 +1,0 @@
-flask\nflask-cors\npandas\nnumpy\n

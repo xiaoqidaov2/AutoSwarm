@@ -1,8 +1,8 @@
 [
     {
-        "task_id": "task_dashboard",
-        "title": "数据面板全栈开发",
-        "description": "创建一个包含前后端的完整数据面板应用",
-        "requirements": "1. 前端：HTML/CSS/JS 数据面板界面，包含图表和统计卡片 2. 后端：Python/Node.js API 服务，提供数据接口 3. 数据：模拟或真实数据展示 4. 功能：数据可视化、实时更新等"
+        "task_id": "task_mind_fan",
+        "title": "虚拟风扇网页开发",
+        "description": "开发一个温馨治愈的虚拟风扇网页应用",
+        "requirements": "1. 一个美观的风扇旋转动画（可点击加速）\n2. 温馨治愈的界面设计\n3. 显示温暖的心灵鸡汤文字\n4. 柔和的粒子背景效果\n5. 响应式设计，支持移动设备\n6. 完整的单页面应用"
     }
 ]

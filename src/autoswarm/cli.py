@@ -78,7 +78,7 @@ def main():
 
     # Initialize components
     role_pool = DynamicRolePool()
-    task_pool = DynamicTaskPool()
+    task_pool = DynamicTaskPool(role_pool=role_pool)
     tool_pool = DynamicToolPool()
     message_bus = MessageBus()
 

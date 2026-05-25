@@ -28,15 +28,24 @@ class ClaimRoleTool(BaseTool):
 
 class ClaimTaskTool(BaseTool):
     name: str = "claim_task"
-    description: str = "申领一个任务，一个任务同时只能被一个Agent申领。参数: task_id (字符串)"
+    description: str = "申领一个任务，一个任务同时只能被一个Agent申领。参数: task_id (字符串)。注意：必须先申领角色才能申领任务！"
     task_pool: DynamicTaskPool
     agent_id: str
 
     def _run(self, task_id: str) -> str:
+        # 检查是否有角色池，并且验证角色
+        if hasattr(self.task_pool, 'role_pool') and self.task_pool.role_pool:
+            if self.agent_id not in self.task_pool.role_pool.agent_roles:
+                return f"申领任务失败: 必须先申领一个角色后才能申领任务！请先使用 claim_role 申领角色。"
+        
         success = self.task_pool.claim(self.agent_id, task_id)
         if success:
             return f"成功申领任务 {task_id}"
         else:
+            # 再次检查是否是因为没有角色导致的
+            if hasattr(self.task_pool, 'role_pool') and self.task_pool.role_pool:
+                if self.agent_id not in self.task_pool.role_pool.agent_roles:
+                    return f"申领任务失败: 必须先申领一个角色后才能申领任务！请先使用 claim_role 申领角色。"
             return f"申领任务失败: {task_id} 可能不存在或已被申领"
 
 

@@ -90,10 +90,11 @@ class DynamicRolePool:
 
 
 class DynamicTaskPool:
-    def __init__(self):
+    def __init__(self, role_pool: Optional[DynamicRolePool] = None):
         self.tasks: Dict[str, Task] = {}
         self.claims: Dict[str, str] = {}
         self.agent_tasks: Dict[str, str] = {}
+        self.role_pool = role_pool
 
     def load_seed_from_file(self, path: str) -> None:
         try:
@@ -146,6 +147,10 @@ class DynamicTaskPool:
             return False
         if task_id in self.claims:
             logger.warning(f"Task {task_id} already claimed")
+            return False
+        # 检查是否已申领角色
+        if self.role_pool and agent_id not in self.role_pool.agent_roles:
+            logger.warning(f"Agent {agent_id} must claim a role first before claiming task {task_id}")
             return False
         if agent_id in self.agent_tasks:
             self.release(agent_id, self.agent_tasks[agent_id])

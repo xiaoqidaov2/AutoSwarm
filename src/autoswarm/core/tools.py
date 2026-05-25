@@ -1,9 +1,10 @@
 from typing import Optional, Dict, Any
 from langchain.tools import BaseTool
 import subprocess
+import os
 import uuid
 import logging
-from .models import Role, Task, ToolInfo
+from .models import Role, Task, ToolInfo, TaskStatus
 from .pools import DynamicRolePool, DynamicTaskPool, DynamicToolPool
 from .message_bus import MessageBus
 
@@ -164,7 +165,7 @@ class ListTasksTool(BaseTool):
             return "当前没有可用的任务"
         result = "可用任务:\n"
         for task in tasks:
-            result += f"  ID: {task.task_id}\n  标题: {task.title}\n  描述: {task.description}\n\n"
+            result += f"  ID: {task.task_id}\n  标题: {task.title}\n  状态: {task.status.value}\n  进度: {task.progress:.0%}\n  描述: {task.description}\n\n"
         return result
 
 
@@ -287,3 +288,72 @@ class WriteFileTool(BaseTool):
         except Exception as e:
             logger.error(f"Write file failed: {e}")
             return f"写文件失败: {str(e)}"
+
+
+class ReadFileTool(BaseTool):
+    name: str = "read_file"
+    description: str = "读取文件内容。参数: filename (字符串)"
+
+    def _run(self, filename: str) -> str:
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                content = f.read()
+            logger.info(f"File read: {filename}")
+            return f"文件内容:\n{content}"
+        except Exception as e:
+            logger.error(f"Read file failed: {e}")
+            return f"读文件失败: {str(e)}"
+
+
+class ListDirectoryTool(BaseTool):
+    name: str = "list_directory"
+    description: str = "列出目录内容。参数: path (字符串，默认当前目录)"
+
+    def _run(self, path: str = ".") -> str:
+        try:
+            items = os.listdir(path)
+            result = f"目录 {path} 内容:\n"
+            for item in items:
+                item_path = os.path.join(path, item)
+                item_type = "目录" if os.path.isdir(item_path) else "文件"
+                result += f"  [{item_type}] {item}\n"
+            logger.info(f"Directory listed: {path}")
+            return result
+        except Exception as e:
+            logger.error(f"List directory failed: {e}")
+            return f"列出目录失败: {str(e)}"
+
+
+class UpdateTaskProgressTool(BaseTool):
+    name: str = "update_task_progress"
+    description: str = "更新任务进度和状态。参数: task_id (字符串), progress (0.0-1.0的浮点数), status (可选字符串: pending/in_progress/completed/failed/blocked)"
+    task_pool: DynamicTaskPool
+    agent_id: str
+
+    def _run(self, task_id: str, progress: float, status: Optional[str] = None) -> str:
+        try:
+            task_status = None
+            if status:
+                status_map = {
+                    "pending": TaskStatus.PENDING,
+                    "in_progress": TaskStatus.IN_PROGRESS,
+                    "completed": TaskStatus.COMPLETED,
+                    "failed": TaskStatus.FAILED,
+                    "blocked": TaskStatus.BLOCKED
+                }
+                task_status = status_map.get(status.lower())
+            
+            success = self.task_pool.update_task_status(
+                task_id, 
+                task_status or TaskStatus.IN_PROGRESS, 
+                progress,
+                self.agent_id
+            )
+            
+            if success:
+                return f"成功更新任务 {task_id} 进度到 {progress:.0%}"
+            else:
+                return "更新任务进度失败"
+        except Exception as e:
+            logger.error(f"Update task progress failed: {e}")
+            return f"更新任务进度失败: {str(e)}"

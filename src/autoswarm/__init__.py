@@ -1,9 +1,10 @@
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 from .config import (
     AgentConfig,
     LLMConfig,
     LoggingConfig,
+    ExecutionConfig,
     AutoSwarmConfig
 )
 
@@ -15,7 +16,9 @@ from .core.models import (
     ToolInfo,
     StepInfo,
     StepResult,
-    Message
+    Message,
+    TaskStatus,
+    AgentMetadata
 )
 
 from .core.pools import (
@@ -43,18 +46,26 @@ from .core.tools import (
     UpdateToolTool,
     DeleteToolTool,
     ExecuteCommandTool,
-    WriteFileTool
+    WriteFileTool,
+    ReadFileTool,
+    ListDirectoryTool,
+    UpdateTaskProgressTool
 )
 
 from .core.agent import Agent, AgentLifecycleManager, SimpleMemory
 
 from .core.coordinator import StepCoordinator
 
+from .core.executor import ParallelExecutor
+
+from .core.llm_client import RetryableLLMClient
+
 __all__ = [
     "__version__",
     "AgentConfig",
     "LLMConfig",
     "LoggingConfig",
+    "ExecutionConfig",
     "AutoSwarmConfig",
     "setup_logger",
     "get_logger",
@@ -64,6 +75,8 @@ __all__ = [
     "StepInfo",
     "StepResult",
     "Message",
+    "TaskStatus",
+    "AgentMetadata",
     "DynamicRolePool",
     "DynamicTaskPool",
     "DynamicToolPool",
@@ -85,8 +98,13 @@ __all__ = [
     "DeleteToolTool",
     "ExecuteCommandTool",
     "WriteFileTool",
+    "ReadFileTool",
+    "ListDirectoryTool",
+    "UpdateTaskProgressTool",
     "Agent",
     "AgentLifecycleManager",
     "SimpleMemory",
-    "StepCoordinator"
+    "StepCoordinator",
+    "ParallelExecutor",
+    "RetryableLLMClient"
 ]

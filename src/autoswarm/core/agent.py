@@ -8,13 +8,15 @@ import traceback
 from .models import StepInfo, StepResult
 from .pools import DynamicRolePool, DynamicTaskPool, DynamicToolPool
 from .message_bus import MessageBus
+from .llm_client import RetryableLLMClient
 from .tools import (
     ClaimRoleTool, ClaimTaskTool, ClaimToolTool,
     SendMessageTool, PublishRoleTool, PublishTaskTool,
     ListRolesTool, UpdateRoleTool, DeleteRoleTool,
     ListTasksTool, UpdateTaskTool, DeleteTaskTool,
     ListToolsTool, UpdateToolTool, DeleteToolTool,
-    ExecuteCommandTool, WriteFileTool
+    ExecuteCommandTool, WriteFileTool, ReadFileTool,
+    ListDirectoryTool, UpdateTaskProgressTool
 )
 
 
@@ -52,7 +54,10 @@ class Agent:
         role_pool: DynamicRolePool,
         task_pool: DynamicTaskPool,
         tool_pool: DynamicToolPool,
-        message_bus: MessageBus
+        message_bus: MessageBus,
+        enable_retries: bool = True,
+        max_retries: int = 3,
+        retry_base_delay: float = 1.0
     ):
         self.agent_id = agent_id
         self.llm = llm
@@ -61,6 +66,16 @@ class Agent:
         self.tool_pool = tool_pool
         self.message_bus = message_bus
         self.alive = True
+
+        # Wrap LLM with retry client if enabled
+        if enable_retries:
+            self.llm_client = RetryableLLMClient(
+                llm,
+                max_retries=max_retries,
+                base_delay=retry_base_delay
+            )
+        else:
+            self.llm_client = llm
 
         self.memory = SimpleMemory()
 
@@ -87,6 +102,9 @@ class Agent:
 9. publish_task(title, description, requirements) - 发布新任务
 10. execute_command(command) - 执行终端命令
 11. write_file(filename, content) - 写文件到磁盘
+12. read_file(filename) - 读取文件内容
+13. list_directory(path) - 列出目录内容
+14. update_task_progress(task_id, progress, status) - 更新任务进度
 
 使用工具的格式：工具名(参数1, 参数2)
 多个工具调用用换行分隔。
@@ -98,6 +116,8 @@ send_message("大家好！", None, True)
 send_message("我们可以合作", "agent_abc123", False)
 write_file("test.txt", "Hello World")
 execute_command("ls -la")
+read_file("test.txt")
+list_directory(".")
 
 请优先使用点对点消息进行具体沟通，只在必要时使用广播！
 你的目标是与其他Agent协作完成任务。"""
@@ -125,6 +145,9 @@ execute_command("ls -la")
             DeleteToolTool(tool_pool=self.tool_pool, agent_id=self.agent_id),
             ExecuteCommandTool(),
             WriteFileTool(),
+            ReadFileTool(),
+            ListDirectoryTool(),
+            UpdateTaskProgressTool(task_pool=self.task_pool, agent_id=self.agent_id),
         ]
 
     def get_available_tools(self):
@@ -236,7 +259,7 @@ execute_command("ls -la")
         output = ""
 
         try:
-            response = self.llm.invoke(messages_for_llm)
+            response = self.llm_client.invoke(messages_for_llm)
 
             if hasattr(response, 'content') and response.content:
                 output = response.content
@@ -273,7 +296,10 @@ class AgentLifecycleManager:
         task_pool: DynamicTaskPool,
         tool_pool: DynamicToolPool,
         message_bus: MessageBus,
-        max_token_limit: int = 32000
+        max_token_limit: int = 32000,
+        enable_retries: bool = True,
+        max_retries: int = 3,
+        retry_base_delay: float = 1.0
     ):
         self.llm = llm
         self.role_pool = role_pool
@@ -282,6 +308,9 @@ class AgentLifecycleManager:
         self.message_bus = message_bus
         self.agents: dict[str, Agent] = {}
         self.max_token_limit = max_token_limit
+        self.enable_retries = enable_retries
+        self.max_retries = max_retries
+        self.retry_base_delay = retry_base_delay
 
     def create_agents(self, count: int) -> List[Agent]:
         new_agents = []
@@ -293,7 +322,10 @@ class AgentLifecycleManager:
                 role_pool=self.role_pool,
                 task_pool=self.task_pool,
                 tool_pool=self.tool_pool,
-                message_bus=self.message_bus
+                message_bus=self.message_bus,
+                enable_retries=self.enable_retries,
+                max_retries=self.max_retries,
+                retry_base_delay=self.retry_base_delay
             )
             self.agents[agent_id] = agent
             new_agents.append(agent)

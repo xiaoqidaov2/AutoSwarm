@@ -6,7 +6,10 @@ import sys
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from autoswarm import Role, Task, ToolInfo, StepInfo, StepResult, Message
+from autoswarm import (
+    Role, Task, ToolInfo, StepInfo, StepResult, Message, 
+    TaskStatus, AgentMetadata
+)
 
 
 def test_role_creation():
@@ -34,6 +37,29 @@ def test_task_creation():
     assert task.description == "这是一个测试任务"
     assert task.requirements == "完成测试"
     assert task.task_id is not None
+    assert task.status == TaskStatus.PENDING
+    assert task.progress == 0.0
+
+
+def test_task_status_enum():
+    """测试 TaskStatus 枚举"""
+    assert TaskStatus.PENDING.value == "pending"
+    assert TaskStatus.IN_PROGRESS.value == "in_progress"
+    assert TaskStatus.COMPLETED.value == "completed"
+    assert TaskStatus.FAILED.value == "failed"
+    assert TaskStatus.BLOCKED.value == "blocked"
+
+
+def test_agent_metadata_creation():
+    """测试 AgentMetadata 创建"""
+    metadata = AgentMetadata(
+        agent_id="agent_123",
+        role_id="role_456"
+    )
+    assert metadata.agent_id == "agent_123"
+    assert metadata.role_id == "role_456"
+    assert metadata.status == "active"
+    assert metadata.last_active_step == 0
 
 
 def test_message_creation():
@@ -50,6 +76,8 @@ def test_message_creation():
     assert msg.step == 1
     assert msg.receiver_id == "agent_456"
     assert msg.broadcast is False
+    assert msg.priority == 0
+    assert msg.ttl == 3
 
 
 def test_step_info():

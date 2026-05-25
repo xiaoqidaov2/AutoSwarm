@@ -1,7 +1,8 @@
 from typing import List, Optional, Dict
+from datetime import datetime
 import json
 import logging
-from .models import Role, Task, ToolInfo
+from .models import Role, Task, ToolInfo, TaskStatus
 
 
 logger = logging.getLogger(__name__)
@@ -139,6 +140,51 @@ class DynamicTaskPool:
 
     def list_tasks(self) -> List[Task]:
         return list(self.tasks.values())
+    
+    def list_tasks_by_status(self, status: TaskStatus) -> List[Task]:
+        return [task for task in self.tasks.values() if task.status == status]
+
+    def update_task_status(
+        self, 
+        task_id: str, 
+        status: TaskStatus, 
+        progress: Optional[float] = None,
+        agent_id: Optional[str] = None
+    ) -> bool:
+        if task_id not in self.tasks:
+            logger.warning(f"Task {task_id} not found for status update")
+            return False
+        
+        task = self.tasks[task_id]
+        task.status = status
+        
+        if progress is not None:
+            task.progress = max(0.0, min(1.0, progress))
+        
+        if agent_id is not None:
+            task.assigned_agent_id = agent_id
+        
+        if status == TaskStatus.COMPLETED:
+            task.completed_at = datetime.now()
+        
+        logger.info(f"Updated task {task_id} status to {status.value}")
+        return True
+    
+    def get_task_hierarchy(self, task_id: str) -> Dict[str, any]:
+        if task_id not in self.tasks:
+            return {}
+        
+        task = self.tasks[task_id]
+        children = [
+            self.get_task_hierarchy(t.task_id)
+            for t in self.tasks.values()
+            if t.parent_task_id == task_id
+        ]
+        
+        return {
+            "task": task,
+            "children": children
+        }
 
     def claim(self, agent_id: str, task_id: str) -> bool:
         if task_id not in self.tasks:
@@ -151,6 +197,7 @@ class DynamicTaskPool:
             self.release(agent_id, self.agent_tasks[agent_id])
         self.claims[task_id] = agent_id
         self.agent_tasks[agent_id] = task_id
+        self.update_task_status(task_id, TaskStatus.IN_PROGRESS, agent_id=agent_id)
         logger.info(f"Agent {agent_id} claimed task {task_id}")
         return True
 
@@ -161,6 +208,9 @@ class DynamicTaskPool:
             return False
         del self.claims[task_id]
         del self.agent_tasks[agent_id]
+        task = self.tasks.get(task_id)
+        if task and task.status == TaskStatus.IN_PROGRESS:
+            self.update_task_status(task_id, TaskStatus.PENDING, agent_id=None)
         logger.info(f"Agent {agent_id} released task {task_id}")
         return True
 

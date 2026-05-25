@@ -6,9 +6,9 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="autoswarm",
-    version="0.0.1",
+    version="0.0.2",
     author="AutoSwarm Team",
-    description="步长驱动无主并行多Agent系统",
+    description="步长驱动无主并行多Agent系统 - v0.0.2",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/yourusername/autoswarm",

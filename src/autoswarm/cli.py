@@ -22,7 +22,7 @@ from autoswarm import (
 
 
 def main():
-    parser = argparse.ArgumentParser(description="步长驱动无主并行多Agent系统 - AutoSwarm v0.0.1")
+    parser = argparse.ArgumentParser(description="步长驱动无主并行多Agent系统 - AutoSwarm v0.0.2")
     parser.add_argument("--agents", type=int, default=3, help="初始Agent数量 (默认: 3)")
     parser.add_argument("--max-steps", type=int, default=10, help="最大步数 (默认: 10)")
     parser.add_argument("--roles", type=str, default="roles.json", help="角色种子文件路径 (默认: roles.json)")
@@ -30,6 +30,13 @@ def main():
     parser.add_argument("--model", type=str, default="deepseek-chat", help="模型名称 (默认: deepseek-chat)")
     parser.add_argument("--log-level", type=str, default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"], help="日志级别")
     parser.add_argument("--log-file", type=str, default="logs/autoswarm.log", help="日志文件路径")
+    parser.add_argument("--enable-parallel", action="store_true", default=True, help="启用并行执行 (默认: 启用)")
+    parser.add_argument("--disable-parallel", action="store_false", dest="enable_parallel", help="禁用并行执行")
+    parser.add_argument("--max-parallel-workers", type=int, default=5, help="最大并行工作线程数 (默认: 5)")
+    parser.add_argument("--enable-retries", action="store_true", default=True, help="启用LLM重试 (默认: 启用)")
+    parser.add_argument("--disable-retries", action="store_false", dest="enable_retries", help="禁用LLM重试")
+    parser.add_argument("--max-retries", type=int, default=3, help="最大重试次数 (默认: 3)")
+    parser.add_argument("--retry-base-delay", type=float, default=1.0, help="重试基础延迟秒数 (默认: 1.0)")
 
     args = parser.parse_args()
 
@@ -38,6 +45,11 @@ def main():
     
     # Override with CLI args
     config.llm.model = args.model
+    config.llm.enable_retries = args.enable_retries
+    config.llm.max_retries = args.max_retries
+    config.llm.retry_base_delay = args.retry_base_delay
+    config.execution.enable_parallel_execution = args.enable_parallel
+    config.execution.max_parallel_workers = args.max_parallel_workers
     if args.log_level:
         config.logging.level = args.log_level
     if args.log_file:
@@ -47,7 +59,7 @@ def main():
     setup_logger(config)
     logger = get_logger(__name__)
     logger.info("=" * 60)
-    logger.info("AutoSwarm 启动")
+    logger.info("AutoSwarm v0.0.2 启动")
     logger.info("=" * 60)
 
     # Check API key
@@ -76,7 +88,10 @@ def main():
         task_pool=task_pool,
         tool_pool=tool_pool,
         message_bus=message_bus,
-        max_token_limit=config.agent.max_token_limit
+        max_token_limit=config.agent.max_token_limit,
+        enable_retries=config.llm.enable_retries,
+        max_retries=config.llm.max_retries,
+        retry_base_delay=config.llm.retry_base_delay
     )
 
     coordinator = StepCoordinator(
@@ -85,7 +100,9 @@ def main():
         task_pool=task_pool,
         tool_pool=tool_pool,
         message_bus=message_bus,
-        lifecycle_manager=lifecycle_manager
+        lifecycle_manager=lifecycle_manager,
+        enable_parallel=config.execution.enable_parallel_execution,
+        max_parallel_workers=config.execution.max_parallel_workers
     )
 
     # Check and resolve seed file paths

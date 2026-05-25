@@ -1,10 +1,11 @@
 from typing import Optional, List
 from langchain_openai import ChatOpenAI
 import logging
-from .models import StepInfo
+from .models import StepInfo, StepResult
 from .pools import DynamicRolePool, DynamicTaskPool, DynamicToolPool
 from .message_bus import MessageBus
 from .agent import AgentLifecycleManager, Agent
+from .executor import ParallelExecutor
 
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,9 @@ class StepCoordinator:
         task_pool: DynamicTaskPool,
         tool_pool: DynamicToolPool,
         message_bus: MessageBus,
-        lifecycle_manager: AgentLifecycleManager
+        lifecycle_manager: AgentLifecycleManager,
+        enable_parallel: bool = True,
+        max_parallel_workers: int = 5
     ):
         self.llm = llm
         self.role_pool = role_pool
@@ -29,6 +32,9 @@ class StepCoordinator:
         self.current_step: int = 0
         self.max_step: int = 0
         self.running: bool = False
+        self.enable_parallel = enable_parallel
+        if enable_parallel:
+            self.executor = ParallelExecutor(max_workers=max_parallel_workers)
 
     def start_episode(
         self,
@@ -48,7 +54,7 @@ class StepCoordinator:
 
         self.lifecycle_manager.create_agents(agent_count)
         logger.info(f"Episode started: {agent_count} agents, max steps {max_step}")
-        print(f"系统启动: {agent_count} 个Agent, 最大步数 {max_step}")
+        print(f"系统启动: {agent_count} 个Agent, 最大步数 {max_step}, 并行执行: {self.enable_parallel}")
 
     def advance_step(self) -> bool:
         if not self.running:
@@ -75,10 +81,24 @@ class StepCoordinator:
             self.global_terminate()
             return False
 
-        for agent in alive_agents:
-            result = agent.step(step_info)
-            print(f"\n[{agent.agent_id}]")
-            print(f"输出: {result.output}")
+        if self.enable_parallel and len(alive_agents) > 1:
+            # 并行执行
+            def agent_step_wrapper(agent):
+                return agent.step(step_info)
+            
+            results = self.executor.execute_parallel(agent_step_wrapper, alive_agents)
+            
+            # 打印结果
+            for agent, result in zip(alive_agents, results):
+                if result:
+                    print(f"\n[{agent.agent_id}]")
+                    print(f"输出: {result.output}")
+        else:
+            # 串行执行（兼容旧方式）
+            for agent in alive_agents:
+                result = agent.step(step_info)
+                print(f"\n[{agent.agent_id}]")
+                print(f"输出: {result.output}")
 
         destroyed = self.lifecycle_manager.check_and_destroy_overlimit_agents()
         if destroyed:

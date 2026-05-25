@@ -220,6 +220,8 @@ list_directory(".")
                 args = final_args
 
             tool_calls.append((tool_name, args, kwargs))
+        
+        return tool_calls
 
     def _auto_convert_type(self, value_str: str):
         """自动转换字符串到适当的类型"""

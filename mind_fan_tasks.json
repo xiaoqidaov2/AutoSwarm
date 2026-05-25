@@ -1,0 +1,8 @@
+[
+    {
+        "task_id": "task_mind_fan",
+        "title": "心灵风扇网页开发",
+        "description": "创建一个带旋转风扇动画的温馨心灵慰藉网页",
+        "requirements": "1. 主页面：index.html，包含完整HTML结构 2. 样式：styles.css，暖色调、渐变背景、风扇动画 3. 脚本：app.js，风扇旋转、粒子效果、心灵鸡汤展示 4. 功能：风扇点击加速、语句定时切换、音效控制"
+    }
+]

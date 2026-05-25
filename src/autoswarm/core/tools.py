@@ -335,12 +335,27 @@ class ListDirectoryTool(BaseTool):
 
 class UpdateTaskProgressTool(BaseTool):
     name: str = "update_task_progress"
-    description: str = "更新任务进度和状态。参数: task_id (字符串), progress (0.0-1.0的浮点数), status (可选字符串: pending/in_progress/completed/failed/blocked)"
+    description: str = "更新任务进度和状态。参数: task_id (字符串), progress (0-100的百分比或0.0-1.0的浮点数), status (可选字符串: pending/in_progress/completed/failed/blocked)"
     task_pool: DynamicTaskPool
     agent_id: str
 
     def _run(self, task_id: str, progress: float, status: Optional[str] = None) -> str:
         try:
+            # 智能处理进度值
+            normalized_progress = progress
+            if isinstance(progress, str):
+                try:
+                    normalized_progress = float(progress)
+                except:
+                    normalized_progress = 0.0
+            
+            # 如果是大于1的百分比（如100），转换为小数
+            if normalized_progress > 1.0:
+                normalized_progress = normalized_progress / 100.0
+            
+            # 确保在 0.0 到 1.0 之间
+            normalized_progress = max(0.0, min(1.0, normalized_progress))
+            
             task_status = None
             if status:
                 status_map = {
@@ -355,12 +370,12 @@ class UpdateTaskProgressTool(BaseTool):
             success = self.task_pool.update_task_status(
                 task_id, 
                 task_status or TaskStatus.IN_PROGRESS, 
-                progress,
+                normalized_progress,
                 self.agent_id
             )
             
             if success:
-                return f"成功更新任务 {task_id} 进度到 {progress:.0%}"
+                return f"成功更新任务 {task_id} 进度到 {normalized_progress:.0%}"
             else:
                 return "更新任务进度失败"
         except Exception as e:

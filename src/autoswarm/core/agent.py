@@ -209,13 +209,42 @@ list_directory(".")
                     arg = arg.strip()
                     if '=' in arg and not (arg.startswith('"') or arg.startswith("'")):
                         key, value = arg.split('=', 1)
-                        kwargs[key.strip()] = value.strip().strip('"\'')
+                        val_str = value.strip().strip('"\'')
+                        # 尝试自动转换类型
+                        kwargs[key.strip()] = self._auto_convert_type(val_str)
                     else:
-                        final_args.append(arg.strip('"\''))
+                        val_str = arg.strip('"\'')
+                        # 尝试自动转换类型
+                        final_args.append(self._auto_convert_type(val_str))
+                
                 args = final_args
 
             tool_calls.append((tool_name, args, kwargs))
-        return tool_calls
+
+    def _auto_convert_type(self, value_str: str):
+        """自动转换字符串到适当的类型"""
+        if not isinstance(value_str, str):
+            return value_str
+        
+        # 尝试转换为 boolean
+        lower_val = value_str.lower()
+        if lower_val == 'true':
+            return True
+        if lower_val == 'false':
+            return False
+        if lower_val == 'none':
+            return None
+        
+        # 尝试转换为数字
+        try:
+            if '.' in value_str or 'e' in value_str.lower():
+                return float(value_str)
+            return int(value_str)
+        except ValueError:
+            pass
+        
+        # 最后返回字符串
+        return value_str
 
     def _call_tool(self, tool_name: str, args: List, kwargs: Dict) -> str:
         if tool_name not in self.all_tools:
